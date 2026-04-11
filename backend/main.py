@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 #以上是import必要库
 
-from database import get_db,engine
+from database import get_db
+
 #导入数据库
 app = FastAPI(Title = "Vision Web后端", version = "1.0")
 #创建应用实例
@@ -30,3 +31,9 @@ def test_db(db:Session = Depends(get_db)):
         return{"status": "success", "msg": "连接正常"}
     except Exception as e:
         return{"status": "fail", "msg": str(e)}
+
+#--------以下是测试代码--------#
+# 加到 main.py 最底部
+
+print("✅ 模型导入成功")
+print("✅  schemas 导入成功")
