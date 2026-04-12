@@ -5,6 +5,7 @@ from fastapi import Depends
 
 from database import get_db, engine
 from routes import user  # 导入用户路由
+from routes import task #导入任务路由
 
 app = FastAPI(title="Vision Web 后端")
 
@@ -20,6 +21,8 @@ app.add_middleware(
 # 挂载路由
 app.include_router(user.router, prefix="/api/user")
 
+app.include_router(task.router, prefix="/api/tasks")
+
 # 测试首页
 @app.get("/")
 def root():
@@ -33,3 +36,4 @@ def test_db(db=Depends(get_db)):
         return {"status": "success"}
     except:
         return {"status": "fail"}
+
