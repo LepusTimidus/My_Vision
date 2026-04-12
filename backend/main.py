@@ -6,7 +6,7 @@ from fastapi import Depends
 from database import get_db, engine
 from routes import user  # 导入用户路由
 from routes import task #导入任务路由
-
+from routes import image #导入图片路由
 app = FastAPI(title="Vision Web 后端")
 
 # 跨域
@@ -22,6 +22,8 @@ app.add_middleware(
 app.include_router(user.router, prefix="/api/user")
 
 app.include_router(task.router, prefix="/api/tasks")
+
+app.include_router(image.router, prefix="/api/images")
 
 # 测试首页
 @app.get("/")
