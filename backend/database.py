@@ -24,10 +24,10 @@ engine = create_engine(DATABASE_URL)
 # 创建会话类（用来操作数据库）
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# 基础模型类（第二步用来映射你的 MySQL 表）
+# 基础模型类
 Base = declarative_base()
 
-# 给接口提供数据库连接（依赖项）
+# 给接口提供数据库连接
 def get_db():
     db = SessionLocal()
     try:
