@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime
 
+from core.security import create_access_token
 from database import get_db
 from models.models import User
 from schemas import UserCreate, UserOut, UserLogin
@@ -38,8 +39,11 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     if not db_user or db_user.password != user.password:
         raise HTTPException(status_code=401, detail="用户名或密码错误")
 
+    token = create_access_token(data={"sub": str(db_user.id)})
+
     return {
         "msg": "登录成功",
+        "ACCESS_TOKEN": token,
         "user_id": db_user.id,
         "username": db_user.username
     }
