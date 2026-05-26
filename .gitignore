@@ -1,0 +1,59 @@
+# ── Python ────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+*.so
+
+# ── 虚拟环境（整个 .venv 不用提交） ─────────────────
+.venv/
+
+# ── 配置（含密码） ─────────────────────────────────────
+.env
+.env.local
+.env.*
+
+# ── 模型权重（大文件，单独下载） ──────────────────────
+*.pth
+*.pkl
+*.h5
+*.onnx
+
+# ── 上传 & 结果（用户数据，不提交） ──────────────────
+uploads/
+results/
+!uploads/.gitkeep
+!results/.gitkeep
+temp/
+
+# ── 数据库备份 ────────────────────────────────────────
+*.sql
+*.sqlite
+*.db
+
+# ── IDE / 编辑器 ──────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── 前端（还没建，先写上好习惯） ────────────────────
+node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+
+# ── Docker ─────────────────────────────────────────────
+docker-compose.override.yml
+
+# ── 日志 ───────────────────────────────────────────────
+*.log
+wandb/
+lightning_logs/
+tensorboard_logs/

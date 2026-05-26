@@ -12,7 +12,6 @@ from routes import image  #导入图片路由
 
 app = FastAPI(title="Vision Web 后端")
 
-#感觉要火在这里加个加载环境变量
 load_dotenv()
 
 # 跨域
