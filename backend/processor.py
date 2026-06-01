@@ -112,11 +112,22 @@ class UHDResProcessor:
             tensor = img2tensor(img_rgb).to(device) / 255.0
             tensor = tensor.unsqueeze(0)  # (1, C, H, W)
 
+            # ── 检查尺寸是否能被模型下采样倍数整除 ──────────────
+            # 模型有 2 次 PixelUnshuffle(2) 下采样，宽高必须被 4 整除
+            # 使用模型自带的 check_image_size（按 16 对齐，确保安全）
+            _, _, h_in, w_in = tensor.shape
+            mod_pad_h = (16 - h_in % 16) % 16
+            mod_pad_w = (16 - w_in % 16) % 16
+            if mod_pad_h > 0 or mod_pad_w > 0:
+                tensor = torch.nn.functional.pad(
+                    tensor, (0, mod_pad_w, 0, mod_pad_h), mode='reflect'
+                )
+
             # 推理
             with torch.no_grad():
                 output = model.test(tensor)
 
-            # 裁回原图尺寸（模型可能会 pad）
+            # 裁回原图尺寸（去掉 padding）
             output = output[:, :, :h, :w]
             output_img = tensor2img(output)  # uint8 RGB
 

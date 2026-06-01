@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from core.security import create_access_token
+from core.security import create_access_token, get_password_hash, verify_password
 from database import get_db
 from models.models import User
 from schemas import UserCreate, UserOut, UserLogin
@@ -17,11 +17,11 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     if db_user:
         raise HTTPException(status_code=400, detail="用户名已存在")
 
-    # 新建用户
+    # 新建用户（密码加密存储）
     new_user = User(
         username=user.username,
         email=user.email,
-        password=user.password,
+        password=get_password_hash(user.password),
         created_at=datetime.now()
     )
 
@@ -35,8 +35,8 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 def login(user: UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.username == user.username).first()
 
-    # 校验用户 + 密码
-    if not db_user or db_user.password != user.password:
+    # 校验用户 + 密码（用 bcrypt 验证）
+    if not db_user or not verify_password(user.password, db_user.password):
         raise HTTPException(status_code=401, detail="用户名或密码错误")
 
     token = create_access_token(data={"sub": str(db_user.id)})

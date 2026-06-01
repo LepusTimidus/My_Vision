@@ -10,6 +10,7 @@ from models.models import Image, Task
 from schemas import ImageCreate, ImageOut, TaskOut
 from processor import UHDResProcessor
 
+router = APIRouter()
 
 # 上传图片（修复版，100% 匹配你的数据库）
 @router.post("/upload", response_model=ImageOut)

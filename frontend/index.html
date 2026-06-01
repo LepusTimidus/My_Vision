@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vision Web - 图像修复</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f172a; min-height: 100vh; color: #e2e8f0;
+  }
+  a { color: #60a5fa; text-decoration: none; }
+
+  /* ===== Auth ===== */
+  .auth-screen {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+  }
+  .auth-card {
+    background: #1e293b; border-radius: 16px; padding: 40px; width: 400px; max-width: 90vw;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,.5);
+  }
+  .auth-card h1 { font-size: 24px; margin-bottom: 4px; }
+  .auth-card p { color: #94a3b8; font-size: 14px; margin-bottom: 24px; }
+  .auth-tabs { display: flex; gap: 0; margin-bottom: 24px; background: #0f172a; border-radius: 8px; padding: 3px; }
+  .auth-tab {
+    flex: 1; padding: 10px; text-align: center; border-radius: 6px; cursor: pointer;
+    font-size: 14px; font-weight: 500; transition: .2s; color: #64748b; border: none; background: none;
+  }
+  .auth-tab.active { background: #3b82f6; color: #fff; }
+  .auth-form { display: none; }
+  .auth-form.active { display: block; }
+
+  /* ===== Main App ===== */
+  .app { display: none; }
+  .app.active { display: block; }
+  .app-header {
+    background: #1e293b; border-bottom: 1px solid #334155; padding: 16px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .app-header h2 { font-size: 18px; }
+  .app-header h2 span { color: #3b82f6; }
+  .user-badge { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+  .user-badge .avatar {
+    width: 32px; height: 32px; border-radius: 50%; background: #3b82f6;
+    display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600;
+  }
+  .btn-logout {
+    padding: 6px 14px; border-radius: 6px; border: 1px solid #475569; background: transparent;
+    color: #94a3b8; cursor: pointer; font-size: 13px; transition: .2s;
+  }
+  .btn-logout:hover { border-color: #ef4444; color: #ef4444; }
+  .main-content { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+  /* ===== Upload ===== */
+  .upload-zone {
+    border: 2px dashed #334155; border-radius: 12px; padding: 48px; text-align: center;
+    cursor: pointer; transition: .2s; background: #1e293b; margin-bottom: 24px;
+  }
+  .upload-zone:hover, .upload-zone.dragover { border-color: #3b82f6; background: #1e3a5f; }
+  .upload-zone .icon { font-size: 48px; margin-bottom: 12px; }
+  .upload-zone p { color: #94a3b8; font-size: 14px; }
+  .upload-zone .sub { color: #64748b; font-size: 12px; margin-top: 8px; }
+
+  /* ===== Processing ===== */
+  .section-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .task-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .task-card {
+    background: #1e293b; border: 2px solid transparent; border-radius: 12px; padding: 20px;
+    cursor: pointer; transition: .2s; text-align: center;
+  }
+  .task-card:hover { border-color: #334155; transform: translateY(-2px); }
+  .task-card.selected { border-color: #3b82f6; background: #1e3a5f; }
+  .task-card .emoji { font-size: 32px; margin-bottom: 8px; }
+  .task-card .name { font-weight: 600; font-size: 15px; }
+  .task-card .desc { color: #94a3b8; font-size: 12px; margin-top: 4px; }
+  .btn-process {
+    width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: .2s; margin-bottom: 32px;
+    background: #3b82f6; color: #fff;
+  }
+  .btn-process:hover:not(:disabled) { background: #2563eb; }
+  .btn-process:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+
+  /* ===== Tasks ===== */
+  .task-list { display: grid; gap: 12px; }
+  .task-item {
+    background: #1e293b; border-radius: 10px; padding: 16px; display: flex;
+    align-items: center; gap: 16px; border: 1px solid #334155;
+  }
+  .task-item .preview {
+    width: 64px; height: 64px; border-radius: 8px; object-fit: cover;
+    background: #0f172a; flex-shrink: 0;
+  }
+  .task-item .info { flex: 1; min-width: 0; }
+  .task-item .info .name { font-weight: 500; font-size: 14px; }
+  .task-item .info .meta { color: #64748b; font-size: 12px; margin-top: 4px; }
+  .status-badge {
+    display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 11px; font-weight: 500;
+  }
+  .status-pending { background: #fef3c7; color: #92400e; }
+  .status-processing { background: #dbeafe; color: #1e40af; }
+  .status-completed { background: #d1fae5; color: #065f46; }
+  .status-failed { background: #fee2e2; color: #991b1b; }
+  .task-item .actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .btn-icon {
+    padding: 8px 14px; border-radius: 6px; border: 1px solid #334155; background: transparent;
+    color: #94a3b8; cursor: pointer; font-size: 13px; transition: .2s; white-space: nowrap;
+  }
+  .btn-icon:hover { border-color: #3b82f6; color: #60a5fa; }
+  .btn-icon.download:hover { border-color: #22c55e; color: #22c55e; }
+
+  /* ===== Forms ===== */
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 6px; }
+  .form-group input {
+    width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155;
+    background: #0f172a; color: #e2e8f0; font-size: 14px; outline: none; transition: .2s;
+  }
+  .form-group input:focus { border-color: #3b82f6; }
+  .btn-primary {
+    width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: .2s; background: #3b82f6; color: #fff;
+  }
+  .btn-primary:hover { background: #2563eb; }
+  .form-error { color: #ef4444; font-size: 13px; margin-top: 8px; display: none; }
+
+  /* ===== Toast ===== */
+  .toast-container { position: fixed; top: 16px; right: 16px; z-index: 999; display: flex; flex-direction: column; gap: 8px; }
+  .toast {
+    padding: 12px 20px; border-radius: 8px; font-size: 14px; color: #fff;
+    box-shadow: 0 10px 25px rgba(0,0,0,.4); animation: slideIn .3s ease;
+    max-width: 360px;
+  }
+  .toast.success { background: #059669; }
+  .toast.error { background: #dc2626; }
+  .toast.info { background: #2563eb; }
+  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  /* Loading spinner */
+  .spinner {
+    width: 20px; height: 20px; border: 3px solid #334155; border-top-color: #3b82f6;
+    border-radius: 50%; animation: spin .6s linear infinite; display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty-state { text-align: center; padding: 48px 24px; color: #64748b; }
+  .empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
+
+  @media (max-width: 640px) {
+    .main-content { padding: 16px; }
+    .task-item { flex-wrap: wrap; }
+    .task-item .actions { width: 100%; justify-content: flex-end; }
+  }
+
+  /* Backend status blink */
+  #statusDot { transition: background .4s; }
+  code { font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; }
+</style>
+</head>
+<body>
+
+<!-- ==================== Auth Screen ==================== -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-card">
+    <h1>👁️ Vision Web</h1>
+    <p>AI 图像增强修复平台</p>
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login">登录</button>
+      <button class="auth-tab" data-tab="register">注册</button>
+    </div>
+
+    <div class="auth-form active" id="loginForm">
+      <div class="form-group">
+        <label>用户名</label>
+        <input type="text" id="loginUsername" placeholder="输入用户名">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="loginPassword" placeholder="输入密码" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="btn-primary" onclick="doLogin()">登录</button>
+      <div class="form-error" id="loginError"></div>
+    </div>
+
+    <div class="auth-form" id="registerForm">
+      <div class="form-group">
+        <label>用户名</label>
+        <input type="text" id="regUsername" placeholder="设置用户名">
+      </div>
+      <div class="form-group">
+        <label>邮箱</label>
+        <input type="email" id="regEmail" placeholder="your@email.com">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="regPassword" placeholder="设置密码" onkeydown="if(event.key==='Enter')doRegister()">
+      </div>
+      <button class="btn-primary" onclick="doRegister()">注册</button>
+      <div class="form-error" id="regError"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== Main App ==================== -->
+<div class="app" id="app">
+  <div class="app-header">
+    <h2>👁️ <span>Vision</span> Web</h2>
+    <div class="user-badge">
+      <span id="backendStatus" style="font-size:12px;display:flex;align-items:center;gap:4px;margin-right:12px;cursor:pointer" onclick="toggleBackendPanel()" title="点击查看启动方法">
+        <span id="statusDot" style="width:8px;height:8px;border-radius:50%;display:inline-block;background:#64748b"></span>
+        <span id="statusText">检测中...</span>
+      </span>
+      <span id="usernameDisplay">用户</span>
+      <button class="btn-logout" onclick="doLogout()">退出</button>
+    </div>
+  </div>
+
+  <!-- ===== 后端启动面板 ===== -->
+  <div id="backendPanel" style="display:none;background:#1e293b;border-bottom:2px solid #3b82f6;padding:16px 24px;font-size:14px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:240px;">
+        <strong style="color:#e2e8f0;">🔌 后端未运行</strong>
+        <p style="color:#94a3b8;margin:6px 0 0 0;font-size:13px;line-height:1.6;">
+          前端页面无法直接启动后端，请用以下任一方式启动：
+        </p>
+        <div style="margin:10px 0 0 12px;color:#94a3b8;font-size:13px;line-height:1.8;">
+          <b style="color:#60a5fa;">方式一：</b>双击项目目录下的 <code style="background:#0f172a;padding:1px 6px;border-radius:4px;font-size:12px;color:#22c55e;">启动后端.bat</code><br>
+          <b style="color:#60a5fa;">方式二：</b>在项目目录打开终端，运行：<br>
+          <code style="background:#0f172a;padding:1px 6px;border-radius:4px;font-size:12px;color:#fbbf24;">.venv\Scripts\python -m uvicorn backend.main:app --reload --port 8000</code>
+        </div>
+      </div>
+      <button onclick="hideBackendPanel()" style="background:transparent;border:1px solid #475569;color:#94a3b8;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:13px;flex-shrink:0;">知道了 ✕</button>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <!-- Upload -->
+    <div class="upload-zone" id="uploadZone" ondragover="event.preventDefault();this.classList.add('dragover')"
+         ondragleave="this.classList.remove('dragover')" ondrop="handleDrop(event)">
+      <div class="icon">🖼️</div>
+      <p><strong>点击上传</strong> 或拖拽图片到这里</p>
+      <p class="sub" id="fileName">支持 JPG / PNG</p>
+      <input type="file" id="fileInput" accept="image/jpeg,image/png" hidden onchange="handleFileSelect(event)">
+    </div>
+
+    <!-- Task Type -->
+    <div class="section-title">⚙️ 选择处理类型</div>
+    <div class="task-grid" id="taskTypeGrid">
+      <div class="task-card" data-type="lowlight" onclick="selectType(this)">
+        <div class="emoji">🌙</div>
+        <div class="name">低光增强</div>
+        <div class="desc">提升暗部细节</div>
+      </div>
+      <div class="task-card" data-type="dehaze" onclick="selectType(this)">
+        <div class="emoji">🌫️</div>
+        <div class="name">去雾</div>
+        <div class="desc">消除雾气朦胧</div>
+      </div>
+      <div class="task-card" data-type="deblur" onclick="selectType(this)">
+        <div class="emoji">💫</div>
+        <div class="name">去模糊</div>
+        <div class="desc">恢复清晰图像</div>
+      </div>
+      <div class="task-card" data-type="derain" onclick="selectType(this)">
+        <div class="emoji">🌧️</div>
+        <div class="name">去雨</div>
+        <div class="desc">消除雨线干扰</div>
+      </div>
+    </div>
+
+    <button class="btn-process" id="btnProcess" disabled onclick="startProcessing()">
+      开始处理
+    </button>
+
+    <!-- Task History -->
+    <div class="section-title">📋 处理历史</div>
+    <div id="taskList">
+      <div class="empty-state">
+        <div class="emoji">📭</div>
+        <p>还没有处理任务，上传图片开始吧</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ========================== Config ==========================
+const API = 'http://localhost:8000/api';
+let auth = { token: null, userId: null, username: null };
+let selectedFile = null;
+let selectedType = null;
+let pollTimer = null;
+let backendOnline = false;
+
+// ========================== Backend Status ==========================
+async function checkBackend() {
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  try {
+    const res = await fetch('http://localhost:8000/', { signal: AbortSignal.timeout(3000) });
+    if (res.ok) {
+      backendOnline = true;
+      dot.style.background = '#22c55e';
+      text.textContent = '后端在线';
+      document.getElementById('backendPanel').style.display = 'none';
+    } else {
+      throw new Error('not ok');
+    }
+  } catch {
+    backendOnline = false;
+    dot.style.background = '#ef4444';
+    text.textContent = '后端离线';
+  }
+}
+
+function toggleBackendPanel() {
+  const panel = document.getElementById('backendPanel');
+  if (!backendOnline) {
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
+function hideBackendPanel() {
+  document.getElementById('backendPanel').style.display = 'none';
+}
+
+// ========================== Auth ==========================
+function init() {
+  const saved = localStorage.getItem('vision_auth');
+  if (saved) {
+    try {
+      auth = JSON.parse(saved);
+      showApp();
+      loadTasks();
+    } catch { showAuth(); }
+  } else {
+    showAuth();
+  }
+
+  // Tab switching
+  document.querySelectorAll('.auth-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+      document.getElementById(tab.dataset.tab + 'Form').classList.add('active');
+      document.getElementById(tab.dataset.tab + 'Error').style.display = 'none';
+    });
+  });
+
+  // Upload zone click
+  document.getElementById('uploadZone').addEventListener('click', () => {
+    document.getElementById('fileInput').click();
+  });
+}
+
+async function doLogin() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value.trim();
+  const errEl = document.getElementById('loginError');
+  if (!username || !password) { showErr(errEl, '请填写用户名和密码'); return; }
+
+  try {
+    const res = await fetch(`${API}/user/login`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) { showErr(errEl, data.detail || '登录失败'); return; }
+
+    auth = { token: data.ACCESS_TOKEN, userId: data.user_id, username: data.username };
+    localStorage.setItem('vision_auth', JSON.stringify(auth));
+    showApp();
+    loadTasks();
+    toast('登录成功', 'success');
+  } catch(e) { showErr(errEl, '网络连接失败，请确认后端已启动'); }
+}
+
+async function doRegister() {
+  const username = document.getElementById('regUsername').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPassword').value.trim();
+  const errEl = document.getElementById('regError');
+  if (!username || !email || !password) { showErr(errEl, '请填写完整信息'); return; }
+
+  try {
+    const res = await fetch(`${API}/user/register`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ username, email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) { showErr(errEl, data.detail || '注册失败'); return; }
+    toast('注册成功，请登录', 'success');
+    document.querySelector('[data-tab="login"]').click();
+    document.getElementById('loginUsername').value = username;
+    document.getElementById('loginPassword').focus();
+  } catch(e) { showErr(errEl, '网络连接失败'); }
+}
+
+function doLogout() {
+  if (pollTimer) clearInterval(pollTimer);
+  auth = { token: null, userId: null, username: null };
+  localStorage.removeItem('vision_auth');
+  showAuth();
+  toast('已退出', 'info');
+}
+
+// ========================== UI State ==========================
+function showAuth() {
+  document.getElementById('authScreen').style.display = 'flex';
+  document.getElementById('app').classList.remove('active');
+}
+function showApp() {
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('app').classList.add('active');
+  document.getElementById('usernameDisplay').textContent = auth.username;
+}
+function showErr(el, msg) { el.textContent = msg; el.style.display = 'block'; }
+
+// ========================== Upload ==========================
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) setFile(file);
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) setFile(file);
+  else toast('请上传图片文件', 'error');
+}
+function setFile(file) {
+  selectedFile = file;
+  document.getElementById('fileName').textContent = `✅ ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+  document.getElementById('uploadZone').style.borderColor = '#22c55e';
+}
+
+// ========================== Task Type ==========================
+function selectType(el) {
+  document.querySelectorAll('.task-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedType = el.dataset.type;
+  updateProcessBtn();
+}
+function updateProcessBtn() {
+  const btn = document.getElementById('btnProcess');
+  if (!selectedFile) { btn.disabled = true; btn.textContent = '请先上传图片'; return; }
+  if (!selectedType) { btn.disabled = true; btn.textContent = '请选择处理类型'; return; }
+  const labels = { lowlight: '低光增强', dehaze: '去雾', deblur: '去模糊', derain: '去雨' };
+  btn.disabled = false;
+  btn.textContent = `🚀 开始${labels[selectedType]}`;
+}
+
+// ========================== Processing ==========================
+async function startProcessing() {
+  if (!selectedFile || !selectedType) return;
+  const btn = document.getElementById('btnProcess');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 上传中...';
+
+  try {
+    // 1. Upload image
+    const form = new FormData();
+    form.append('file', selectedFile);
+    const uploadRes = await fetch(`${API}/images/upload?user_id=${auth.userId}`, { method: 'POST', body: form });
+    if (!uploadRes.ok) throw new Error('上传失败');
+    const imageData = await uploadRes.json();
+    const imageId = imageData.id;
+
+    // 2. Create task
+    btn.innerHTML = '<span class="spinner"></span> 创建任务...';
+    const taskRes = await fetch(`${API}/tasks/task`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: auth.userId, image_id: imageId, task_type: selectedType })
+    });
+    if (!taskRes.ok) throw new Error('创建任务失败');
+    const taskData = await taskRes.json();
+    const taskId = taskData.id;
+
+    // 3. Submit for async processing (新线程后台跑，不阻塞)
+    btn.innerHTML = `<span class="spinner"></span> 已提交...`;
+    fetch(`${API}/tasks/process/${taskId}`, { method: 'POST' })
+      .then(r => r.json())
+      .then(() => {
+        toast('✅ 任务已提交，后台处理中...', 'info');
+        btn.disabled = false;
+        btn.textContent = '🚀 开始处理';
+        loadTasks();
+      })
+      .catch(() => {
+        toast('提交失败，请确认后端在运行', 'error');
+        btn.disabled = false;
+        updateProcessBtn();
+      });
+
+    loadTasks(); // immediate refresh
+
+  } catch(e) {
+    toast('错误: ' + e.message, 'error');
+    btn.disabled = false;
+    updateProcessBtn();
+  }
+}
+
+// ========================== Task List ==========================
+async function loadTasks() {
+  try {
+    const res = await fetch(`${API}/tasks/tasks/${auth.userId}`);
+    if (!res.ok) return;
+    const tasks = await res.json();
+
+    const container = document.getElementById('taskList');
+    if (!tasks || tasks.length === 0) {
+      container.innerHTML = `<div class="empty-state"><div class="emoji">📭</div><p>还没有处理任务</p></div>`;
+      return;
+    }
+
+    // Sort newest first
+    tasks.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+
+    const labels = { lowlight: '低光增强', dehaze: '去雾', deblur: '去模糊', derain: '去雨' };
+    const emojis = { lowlight: '🌙', dehaze: '🌫️', deblur: '💫', derain: '🌧️' };
+
+    container.innerHTML = '<div class="task-list">' + tasks.map(t => {
+      const statusClass = 'status-' + t.status;
+      const label = labels[t.task_type] || t.task_type;
+      return `
+        <div class="task-item">
+          <img class="preview" src="${API}/images/source/${t.image_id}" alt="原图"
+               onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2264%22 height=%2264%22><rect fill=%22%231e293b%22 width=%2264%22 height=%2264%22/><text x=%2232%22 y=%2236%22 text-anchor=%22middle%22 fill=%22%2364748b%22 font-size=%2220%22>🖼️</text></svg>'">
+          <div class="info">
+            <div class="name">${emojis[t.task_type] || '📷'} ${label}</div>
+            <div class="meta">
+              <span class="status-badge ${statusClass}">${statusText(t.status)}</span>
+              &nbsp; ${formatDate(t.created_at)}
+              ${t.status === 'completed' && t.result_path ? `<br><small style="color:#64748b">结果已生成</small>` : ''}
+            </div>
+          </div>
+          <div class="actions">
+            ${t.status === 'processing' ? '<span class="spinner"></span>' : ''}
+            ${t.status === 'pending' ? `<button class="btn-icon" onclick="retryTask(${t.id})">▶ 处理</button>` : ''}
+            ${t.status === 'completed' ? `<button class="btn-icon download" onclick="downloadResult(${t.id})">⬇ 下载</button>` : ''}
+            ${t.status === 'failed' ? `<button class="btn-icon" onclick="retryTask(${t.id})">🔄 重试</button>` : ''}
+          </div>
+        </div>`;
+    }).join('') + '</div>';
+
+    // Poll for processing tasks — stop when all done
+    const hasProcessing = tasks.some(t => t.status === 'processing' || t.status === 'pending');
+    if (hasProcessing) {
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(() => {
+        loadTasks().then(latestTasks => {
+          const allDone = !latestTasks.some(t => t.status === 'processing' || t.status === 'pending');
+          if (allDone && pollTimer) {
+            clearInterval(pollTimer);
+            pollTimer = null;
+            // 通知用户完成
+            const completed = latestTasks.filter(t => t.status === 'completed');
+            if (completed.length > 0) {
+              toast(`✅ ${completed.length} 个任务已完成！`, 'success');
+            }
+          }
+        });
+      }, 2000);
+    } else if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+
+    return tasks; // return for chaining
+
+  } catch(e) {
+    // silent
+    return [];
+  }
+}
+
+function statusText(s) {
+  return { pending: '等待中', processing: '处理中', completed: '已完成', failed: '失败' }[s] || s;
+}
+
+function formatDate(d) {
+  if (!d) return '';
+  const dt = new Date(d);
+  return dt.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+async function retryTask(taskId) {
+  try {
+    await fetch(`${API}/tasks/process/${taskId}`, { method: 'POST' });
+    toast('已重新提交处理', 'info');
+    loadTasks();
+  } catch(e) {
+    toast('重试失败，请确认后端在运行', 'error');
+  }
+}
+
+async function downloadResult(taskId) {
+  window.open(`${API}/images/download/${taskId}`, '_blank');
+}
+
+// ========================== Toast ==========================
+function toast(msg, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 3000);
+}
+
+// ========================== Init ==========================
+init();
+checkBackend();
+setInterval(checkBackend, 5000); // 每5秒检测一次后端状态
+</script>
+</body>
+</html>
